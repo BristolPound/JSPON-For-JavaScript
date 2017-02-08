@@ -4,3 +4,8 @@ spec/*
 !spec/karma.conf.js
 !spec/mockObj.js
 !spec/spec.js
+
+# Eclipse
+#
+.project
+.settings
