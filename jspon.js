@@ -206,31 +206,35 @@ JSPON.prototype.jsponClone = function(objTracker, oldValue, id)
 	return oldValue;
 }
 
-
-
-JSPON.jsponParse = function(objTracker, oldValue, id)
+JSPON.onEvent = function(event, arguments)
 {
-	return JSPON.defaultInstance().jsponParse(objTracker, oldValue, id);
-}
-
-JSPON.prototype.jsponParse = function(objTracker, obj, id)
-{
-	if (this.onWalk !== undefined)
+	if (this[event] !== undefined)
 	{
-		if (!Array.isArray(this.onWalk))
+		if (!Array.isArray(this[event]))
 		{
-			this.onWalk = [this.onWalk];
+			this. = [ this[event] ];
 		}
 
-		for (var i = 0; i < this.onWalk.length; i++)
+		for (var i = 0; i < this[event].length; i++)
 		{
-			if (this.onWalk[i].constructor === Function)
+			if (this[event][i].constructor === Function)
 			{
-				obj = this.onWalk[i](id, obj) || obj;
+				obj = this[event][i](id, obj) || obj;
 			}
 		}
 	}
 
+}
+
+JSPON.jsponParse = function(objTracker, obj, id)
+{
+	return JSPON.defaultInstance().jsponParse(objTracker, obj, id);
+}
+
+JSPON.prototype.jsponParse = function(objTracker, obj, id)
+{
+	this.onEvent('onWalk', arguments);
+	
 	if (obj && typeof obj === 'object') {
 		if (Object.prototype.hasOwnProperty.call(obj, '$ref')) {
 			return objTracker[obj['$ref']];
