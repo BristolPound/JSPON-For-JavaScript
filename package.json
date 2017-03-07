@@ -6,27 +6,25 @@
 	"author": "Bristol Pound CIC",
 	"license": "MIT",
 	"homepage": "https://github.com/BristolPound/JSPON-For-JavaScript",
-	"maintainers": 
-	[
-		{
-			"name": "Martin Rüegg"
-		,	"email": "martin.rueegg@bristolpound.org"
-		}
-	],
-	"contributors": 
-	[
-		{
-			"name": "Martin Rüegg"
-		,	"email": "martin.rueegg@bristolpound.org"
-		},
-		{
-			"name": "mdavisJr"
-		,	"url": "https://github.com/mdavisJr"
-		}
-	],
-	"repository": 
+	"maintainers":
+	[{
+	    "name": "Martin Rüegg",
+	    "email": "martin.rueegg@bristolpound.org"
+	}],
+	"contributors":
+	[{
+	    "name": "Martin Rüegg",
+	    "email": "martin.rueegg@bristolpound.org"
+	},{
+	    "name": "mdavisJr",
+	    "url": "https://github.com/mdavisJr"
+	}],
+	"repository":
 	{
 		"type": "git",
 		"url": "https://github.com/BristolPound/JSPON-For-JavaScript.git"
+	},
+	"dependencies": {
+		"events": "~1.1.0"
 	}
 }

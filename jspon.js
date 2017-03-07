@@ -1,9 +1,17 @@
 "use strict";
 
+//const each = require("bloody-collections/lib/each");
+function each(list, callback)
+{
+	for (var i = 0; i < list.length; i++) {
+		callback(list[i]);
+	}
+}
+
 var i = 0;
 var defaultInstance;
 
-var JSPON = module.exports = function(config)
+const JSPON = function(config)
 {
 
 	if (!(this instanceof JSPON))
@@ -11,6 +19,8 @@ var JSPON = module.exports = function(config)
 		return JSPON.defaultInstance(config);
 	}
 
+	var _me = this;
+	
 	this.idFieldName = 'b5b813f0-9f2c-4fd5-893e-c1bc36f2aa48';
 	this.useIdBase = false;
 	this.preserveArrays = true;
@@ -19,10 +29,7 @@ var JSPON = module.exports = function(config)
 	this.jsonPathRoot = '$';
 	this.useJSONPathDotNotation = true;
 	this.i = ++i;
-	function onWalk(loc, expression, value, path) {};
-	this.onWalk = function(loc, expression, value, path) {};
-	this.onWalk = onWalk;
-	
+
 	this.setSettings(config);
 }
 
@@ -93,21 +100,40 @@ JSPON.prototype.setSettings = function(newSettings) {
 		this.jsonStringifier = JSON.stringify;
 	}
 
-	if (Object.prototype.hasOwnProperty.call(newSettings, 'onWalk'))
+	var self = this;
+
+	each([
+		  'onBeforeWalk'
+		, 'onBeforeWalkArray'
+		, 'onBeforeWalkArrayElement'
+		, 'onAfterWalkArrayElement'
+		, 'onAfterWalkArray'
+		, 'onBeforeWalkObject'
+		, 'onBeforeWalkObjectElement'
+		, 'onAfterWalkObjectElement'
+		, 'onAfterWalkObject'
+		, 'onAfterWalk'
+	],
+	function(eventName)
 	{
-		if (newSettings.onWalk.constructor === Array)
+		if (Object.prototype.hasOwnProperty.call(newSettings, eventName))
 		{
-			this.onWalk = newSettings.onWalk;
+			if (!self.events)
+			{
+				const events = require('events');
+				self.events = new events.EventEmitter();
+			}
+			
+			if (newSettings[eventName].constructor === Array)
+			{
+				each(newSettings[eventName], function(callback){self.events.on(eventName, callback)});
+			}
+			else
+			{
+				self.events.on(eventName, newSettings[eventName]);
+			}
 		}
-		else if (this.onWalk.constructor === Array)
-		{
-			this.onWalk.push(newSettings.onWalk);
-		}
-		else
-		{
-			this.onWalk = [newSettings.onWalk];
-		}
-	}
+	})
 }
 
 JSPON.setSettings = function(newSettings)
@@ -206,24 +232,14 @@ JSPON.prototype.jsponClone = function(objTracker, oldValue, id)
 	return oldValue;
 }
 
-JSPON.onEvent = function(event, arguments)
+
+JSPON.prototype.eventData = function(params)
 {
-	if (this[event] !== undefined)
-	{
-		if (!Array.isArray(this[event]))
-		{
-			this. = [ this[event] ];
-		}
-
-		for (var i = 0; i < this[event].length; i++)
-		{
-			if (this[event][i].constructor === Function)
-			{
-				obj = this[event][i](id, obj) || obj;
-			}
-		}
+	return {
+		params: params || {},
+		skip:   false,
+		end:    false
 	}
-
 }
 
 JSPON.jsponParse = function(objTracker, obj, id)
@@ -233,50 +249,109 @@ JSPON.jsponParse = function(objTracker, obj, id)
 
 JSPON.prototype.jsponParse = function(objTracker, obj, id)
 {
-	this.onEvent('onWalk', arguments);
+	var e = this.eventData({objTracker: objTracker, obj: obj, id: id});
 	
-	if (obj && typeof obj === 'object') {
-		if (Object.prototype.hasOwnProperty.call(obj, '$ref')) {
-			return objTracker[obj['$ref']];
-		}
-		if (Object.prototype.hasOwnProperty.call(obj, '$values') && this.preserveArrays && this.useIdBase) {
-			obj = obj['$values'];
-		}
-		objTracker[id] = obj;
-		if (obj.constructor === Array) {
-			var tempObj = {};
-			var allWithId = true;
+	//console.log('onBeforeWalk', e);
+	if (!this.events || !this.events.emit('onBeforeWalk', e) || !e.skip)
+	{
+		//console.log("in onBeforeWalk loop");
+		if (e.end) return e.params.obj;
+		
+		if (e.params.obj && typeof e.params.obj === 'object')
+		{
+			if (Object.prototype.hasOwnProperty.call(e.params.obj, '$ref'))
+			{
+				//console.log("returning "+e.params.obj['$ref']);
+				return objTracker[e.params.obj['$ref']];
+			}
 
-			for (var i = 0; i < obj.length; i++) {
-				obj[i] = this.jsponParse(objTracker, obj[i], this.useIdBase ? obj[i][this.idFieldName] : id + '[' + i + ']');
-				if (obj[i]
-				&& typeof obj[i] === 'object'
-					&& Object.prototype.hasOwnProperty.call(obj[i], 'id'))
+			if (Object.prototype.hasOwnProperty.call(e.params.obj, '$values') && this.preserveArrays && this.useIdBase)
+			{
+				e.params.obj = e.params.obj['$values'];
+			}
+
+			objTracker[e.params.id] = e.params.obj;
+
+			if (e.params.obj.constructor === Array)
+			{
+				//console.log('onBeforeWalkArray', e);
+				if (!this.events || !this.events.emit('onBeforeWalkArray', e) || !e.skip)
 				{
-					objTracker[id+'.'+obj[i].id] = obj[i];
-					if (allWithId)
+					if (e.end) return e.params.obj;
+
+					for (e.params.i = 0; e.params.i < e.params.obj.length; e.params.i++)
 					{
-						tempObj[obj[i].id] = obj[i];
+						//console.log('onBeforeWalkArrayElement', e);
+						if (!this.events || !this.events.emit('onBeforeWalkArrayElement', e) || !e.skip)
+						{
+							if (e.end) return e.params.obj;
+
+							e.params.obj[e.params.i] = this.jsponParse(objTracker, e.params.obj[e.params.i], this.useIdBase ? e.params.obj[e.params.i][this.idFieldName] : e.params.id + '[' + e.params.i + ']');
+
+							//console.log('onAfterWalkArrayElement', e);
+							if (this.events && this.events.emit('onAfterWalkArrayElement', e) && e.end)
+							{
+								return e.params.obj;
+							}
+						}
+					}
+
+					//console.log('onAfterWalkArray', e);
+					if (this.events && this.events.emit('onAfterWalkArray', e) && e.end)
+					{
+						return e.params.obj;
 					}
 				}
-				else
+
+			}
+			else
+			{
+				//console.log('onBeforeWalkObject', e);
+				if (!this.events || !this.events.emit('onBeforeWalkObject', e) || !e.skip)
 				{
-					allWithId = false;
+					//console.log('onBeforeWalkObject loop', e);
+					if (e.end) return e.params.obj;
+
+					for (e.params.key in e.params.obj)
+					{
+						//console.log('onBeforeWalkObjectElement', e);
+						if (!this.events || !this.events.emit('onBeforeWalkObjectElement', e) || !e.skip)
+						{
+							if (e.end) return e.params.obj;
+
+							e.params.obj[e.params.key] = this.jsponParse(
+									  objTracker
+									, e.params.obj[e.params.key]
+									, this.useIdBase
+									? e.params.obj[e.params.key][this.idFieldName]
+									: this.useJSONPathDotNotation
+									? e.params.id + '.' + e.params.key
+									: e.params.id + '[\'' + e.params.key + '\']'
+							);
+
+							//console.log('onAfterWalkObjectElement', e);
+							if (this.events && this.events.emit('onAfterWalkObjectElement', e) && e.end)
+							{
+								return e.params.obj;
+							}
+						}
+					}
+
+					//console.log('onAfterWalkObject', e);
+					if (this.events && this.events.emit('onAfterWalkObject', e) && e.end)
+					{
+						return e.params.obj;
+					}
 				}
 			}
-
-			if (allWithId)
-			{
-				obj = tempObj;
-			}
-		} else {
-			for (var key in obj) {
-				obj[key] = this.jsponParse(objTracker, obj[key], this.useIdBase ? obj[key][this.idFieldName] : this.useJSONPathDotNotation ? id + '.' + key : id + '[\'' + key + '\']');
-			}
+			if (this.useIdBase) delete e.params.obj[this.idFieldName];
 		}
-		if (this.useIdBase) delete obj[this.idFieldName];
+
+		//console.log('onAfterWalk', e);
+		this.events && this.events.emit('onAfterWalk', e)
 	}
-	return obj;
+	
+	return e.params.obj;
 }
 
 JSPON.stringify = function(obj)
@@ -304,6 +379,9 @@ JSPON.prototype.parse = function(str) {
 	var obj = this.jsonParser(str);
 	return this.jsponParse({}, obj, this.useIdBase ? obj[this.idFieldName] : this.jsonPathRoot);
 }
+
+
+module.exports = JSPON;
 
 //return {
 //parse: parse,
