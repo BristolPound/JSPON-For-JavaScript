@@ -1,0 +1,13 @@
+perf/*
+spec/*
+!perf/BrowserBenchmark.htm
+!spec/karma.conf.js
+!spec/mockObj.js
+!spec/spec.js
+
+# Eclipse
+#
+.project
+.settings
+
+node_modules
