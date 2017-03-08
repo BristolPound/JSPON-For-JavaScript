@@ -54,17 +54,13 @@ JSPON.prototype.setSettings = function(newSettings) {
 	}
 
 	if (Object.prototype.hasOwnProperty.call(newSettings, 'preserveArrays')) {
-		this.preserveArrays = newSettings.this.preserveArrays;
+		this.preserveArrays = newSettings.preserveArrays;
 	} else {
 		this.preserveArrays = true;
 	}
 
 	if (Object.prototype.hasOwnProperty.call(newSettings, 'jsonPathRoot')) {
-		this.jsonPathRoot = newSettings.this.jsonPathRoot;
-		this.useIdBase = false;
-		this.idFieldName = undefined;
-	} else {
-		this.jsonPathRoot = '$';
+		this.jsonPathRoot = newSettings.jsonPathRoot;
 		this.useIdBase = false;
 		this.idFieldName = undefined;
 	}
@@ -75,29 +71,20 @@ JSPON.prototype.setSettings = function(newSettings) {
 		} else {
 			this.useJSONPathDotNotation = true;
 		}
-	} else {
-		this.useJSONPathDotNotation = true;
 	}
 
 	if (Object.prototype.hasOwnProperty.call(newSettings, 'idFieldName')) {
-		this.idFieldName = newSettings.this.idFieldName;
+		this.idFieldName = newSettings.idFieldName;
 		this.useIdBase = true;
 		this.jsonPathRoot = undefined;
-	} else {
-		this.idFieldName = 'b5b813f0-9f2c-4fd5-893e-c1bc36f2aa48';
-		this.useIdBase = false;
 	}
 
 	if (Object.prototype.hasOwnProperty.call(newSettings, 'jsonParser')) {
 		this.jsonParser = newSettings.parse;
-	} else {
-		this.jsonParser = JSON.parse;
 	}
 
 	if (Object.prototype.hasOwnProperty.call(newSettings, 'jsonStringifier')) {
 		this.jsonStringifier = newSettings.stringify
-	} else {
-		this.jsonStringifier = JSON.stringify;
 	}
 
 	var self = this;
@@ -377,7 +364,8 @@ JSPON.parse = function(str)
 
 JSPON.prototype.parse = function(str) {
 	var obj = this.jsonParser(str);
-	return this.jsponParse({}, obj, this.useIdBase ? obj[this.idFieldName] : this.jsonPathRoot);
+	obj = this.jsponParse({}, obj, this.useIdBase ? obj[this.idFieldName] : this.jsonPathRoot);
+	return obj;
 }
 
 
