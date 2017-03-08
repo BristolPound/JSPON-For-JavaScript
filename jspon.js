@@ -1,5 +1,7 @@
 "use strict";
 
+const Events = require('events');
+
 //const each = require("bloody-collections/lib/each");
 function each(list, callback)
 {
@@ -107,8 +109,7 @@ JSPON.prototype.setSettings = function(newSettings) {
 		{
 			if (!self.events)
 			{
-				const events = require('events');
-				self.events = new events.EventEmitter();
+				self.events = new Events.EventEmitter();
 			}
 			
 			if (newSettings[eventName].constructor === Array)
