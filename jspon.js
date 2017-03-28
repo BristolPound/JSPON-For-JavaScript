@@ -186,12 +186,12 @@ JSPON.prototype.setSettings = function(newSettings) {
 				{
 					this.refReplacementsOneToOne = replacements;
 					
-					self.events.prependListener('onBeforeRef', callback);
+					self.events.addListener('onBeforeRef_', callback);
 				}
 			}
 			else
 			{
-				self.events.removeListener('onBeforeRef', callback);
+				self.events.removeListener('onBeforeRef_', callback);
 
 				this.refReplacementsOneToOne = undefined;
 			}
@@ -324,7 +324,12 @@ JSPON.prototype.jsponParse = function(objTracker, obj, id)
 		{
 			if (Object.prototype.hasOwnProperty.call(e.params.obj, '$ref'))
 			{
-				if (!this.events || !this.events.emit('onBeforeRef', e) || !e.skip)
+				if (!this.events
+				||  !this.events.emit('onBeforeRef_', e)
+				||  !e.skip
+				||  !this.events.emit('onBeforeRef', e)
+				||  !e.skip
+				)
 				{
 					//console.log("returning "+e.params.obj['$ref']);
 					return objTracker[e.params.obj['$ref']];
