@@ -95,8 +95,7 @@ JSPON.prototype.setSettings = function(newSettings) {
 	{
 		if (!self.events)
 		{
-			const events = require('events');
-			self.events = new events.EventEmitter();
+			self.events = new Events.EventEmitter();
 		}
 		
 		return self.events;
@@ -142,7 +141,7 @@ JSPON.prototype.setSettings = function(newSettings) {
 
 		const replacements = this.refReplacementsOneToOne ? this.refReplacementsOneToOne : {};
 
-		const callback = function(e)
+		const refReplacementsOneToOneCallback = function(e)
 		{
 			const x = e.params.obj['$ref'].replace(rx, function (needle) {return replacements[needle];});
 
@@ -186,12 +185,12 @@ JSPON.prototype.setSettings = function(newSettings) {
 				{
 					this.refReplacementsOneToOne = replacements;
 					
-					self.events.addListener('onBeforeRef_', callback);
+					self.events.addListener('onBeforeRef_', refReplacementsOneToOneCallback);
 				}
 			}
 			else
 			{
-				self.events.removeListener('onBeforeRef_', callback);
+				self.events.removeListener('onBeforeRef_', refReplacementsOneToOneCallback);
 
 				this.refReplacementsOneToOne = undefined;
 			}
@@ -325,10 +324,7 @@ JSPON.prototype.jsponParse = function(objTracker, obj, id)
 			if (Object.prototype.hasOwnProperty.call(e.params.obj, '$ref'))
 			{
 				if (!this.events
-				||  !this.events.emit('onBeforeRef_', e)
-				||  !e.skip
-				||  !this.events.emit('onBeforeRef', e)
-				||  !e.skip
+				|| (this.events.emit('onBeforeRef_', e), this.events.emit('onBeforeRef', e), !e.skip)
 				)
 				{
 					//console.log("returning "+e.params.obj['$ref']);
