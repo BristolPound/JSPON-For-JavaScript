@@ -171,7 +171,7 @@ JSPON.prototype.setSettings = function(newSettings) {
 		{
 			for (var key in replacements)
 			{
-				console.log({pattern: pattern, key: key});
+				//console.log({pattern: pattern, key: key});
 				pattern = pattern + (pattern ? "|" : "") + key;
 			}
 
