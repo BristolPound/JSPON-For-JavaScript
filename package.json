@@ -1,6 +1,6 @@
 {
 	"name": "JSPON-For-JavaScript",
-	"version": "0.0.6",
+	"version": "0.1.4",
 	"description": "JavaScript wrapper for processing circular references in JSON",
 	"main": "jspon.js",
 	"author": "Bristol Pound CIC",

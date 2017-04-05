@@ -143,14 +143,17 @@ JSPON.prototype.setSettings = function(newSettings) {
 
 		const refReplacementsOneToOneCallback = function(e)
 		{
-			const x = e.params.obj['$ref'].replace(rx, function (needle) {return replacements[needle];});
+			var x = e.params.obj['$ref'];
+			var y;
 
-			if (x != e.params.obj['$ref'])
+			while ((y = x.replace(rx, function (match, p1, p2, p3) {return p1+replacements[p2]+p3;})) != x)
 			{
-				//console.log("replace $ref "+e.params.obj['$ref']+" => "+x);
+				console.log("replace $ref "+x+" => "+y);
 
-				e.params.obj['$ref'] = x;
+				x = y;
 			}
+
+			e.params.obj['$ref'] = x;
 		}
 
 		const regExpEscape = function(s)
@@ -172,13 +175,14 @@ JSPON.prototype.setSettings = function(newSettings) {
 			for (var key in replacements)
 			{
 				//console.log({pattern: pattern, key: key});
-				pattern = pattern + (pattern ? "|" : "") + key;
+				pattern = pattern + (pattern ? "|" : "") + regExpEscape(key);
 			}
 
 			if (pattern)
 			{
-				pattern = "("+regExpEscape(pattern)+")";
+				pattern = '(^|\\.)('+pattern+')(\\.|$)';
 
+				console.log({pattern: pattern, replacements: replacements});
 				rx = new RegExp(pattern, "g");
 
 				if (!this.refReplacementsOneToOne)
