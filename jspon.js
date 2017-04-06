@@ -10,6 +10,17 @@ function each(list, callback)
 	}
 }
 
+function requireEvents(self)
+{
+	if (!self.events)
+	{
+		self.events = new Events.EventEmitter();
+	}
+	
+	return self.events;
+}
+
+
 var i = 0;
 var defaultInstance;
 
@@ -91,16 +102,6 @@ JSPON.prototype.setSettings = function(newSettings) {
 
 	var self = this;
 
-	const requireEvents = function()
-	{
-		if (!self.events)
-		{
-			self.events = new Events.EventEmitter();
-		}
-		
-		return self.events;
-	}
-
 	each([
 		  'onBeforeWalk'
 		, 'onBeforeRef'
@@ -118,87 +119,129 @@ JSPON.prototype.setSettings = function(newSettings) {
 	{
 		if (Object.prototype.hasOwnProperty.call(newSettings, eventName))
 		{
-			const events = requireEvents();
+			const events = requireEvents(self);
 			
 			if (newSettings[eventName].constructor === Array)
 			{
-				each(newSettings[eventName], function(callback){self.events.on(eventName, callback)});
+				each(newSettings[eventName], function(callback){events.on(eventName, callback)});
 			}
 			else
 			{
-				self.events.on(eventName, newSettings[eventName]);
+				events.on(eventName, newSettings[eventName]);
 			}
 		}
 	})
 
 	if (Object.prototype.hasOwnProperty.call(newSettings, 'refReplacementsOneToOne'))
 	{
-		var hasNew = false;
-		var rx;
-		var pattern = "";
-
-		const events = requireEvents();
-
 		const replacements = this.refReplacementsOneToOne ? this.refReplacementsOneToOne : {};
 
-		const refReplacementsOneToOneCallback = function(e)
+		if (typeof newSettings.refReplacementsOneToOne == "string")
 		{
-			var x = e.params.obj['$ref'];
-			var y;
-
-			while ((y = x.replace(rx, function (match, p1, p2, p3) {return p1+replacements[p2]+p3;})) != x)
+			replacements['__inline__'] = newSettings.refReplacementsOneToOne;
+		}
+		else
+		{
+			for (var key in newSettings.refReplacementsOneToOne)
 			{
-				console.log("replace $ref "+x+" => "+y);
-
-				x = y;
+				replacements[key] = newSettings.refReplacementsOneToOne[key];
 			}
-
-			e.params.obj['$ref'] = x;
 		}
 
-		const regExpEscape = function(s)
-		{
-			return String(s)
-				.replace(/([-()\[\]{}+?*.$\^|,:#<!\\])/g, '\\$1')
-				.replace(/\x08/g, '\\x08')
-				;
-		};
+		replacements['__pattern__'] = undefined;
+		this.refReplacementsOneToOne = replacements;
+	}
+}
 
-		for (var key in newSettings.refReplacementsOneToOne)
+
+JSPON.prototype.evaluateOneToOneReplacements = function(root)
+{
+	var rx;
+
+	const replacements = this.refReplacementsOneToOne ? this.refReplacementsOneToOne : {};
+
+
+	const refReplacementsOneToOneCallback = function(e)
+	{
+		var x = e.params.obj['$ref'];
+		var y;
+
+		while ((y = x.replace(rx, function (match, p1, p2, p3) {return p1+replacements[p2]+p3;})) != x)
 		{
-			replacements[key] = newSettings.refReplacementsOneToOne[key];
-			hasNew = true;
+			//console.log("replace $ref "+x+" => "+y);
+
+			x = y;
 		}
 
-		if (hasNew)
+		e.params.obj['$ref'] = x;
+	}
+
+	const regExpEscape = function(s)
+	{
+		return String(s)
+			.replace(/([-()\[\]{}+?*.$\^|,:#<!\\])/g, '\\$1')
+			.replace(/\x08/g, '\\x08')
+			;
+	};
+
+	if (!replacements.__pattern__)
+	{
+		if (replacements.__inline__)
 		{
-			for (var key in replacements)
+			const	keys	= replacements.__inline__.split('.')
+			var		parent	= root;
+
+			for (var i = 0; root && i < keys.length; i++)
 			{
-				//console.log({pattern: pattern, key: key});
-				pattern = pattern + (pattern ? "|" : "") + regExpEscape(key);
+				//console.log(keys[i],parent);
+				parent = parent[keys[i]]
 			}
 
-			if (pattern)
+			if (typeof parent == "object")
 			{
-				pattern = '(^|\\.)('+pattern+')(\\.|$)';
-
-				console.log({pattern: pattern, replacements: replacements});
-				rx = new RegExp(pattern, "g");
-
-				if (!this.refReplacementsOneToOne)
+				for (var key in parent)
 				{
-					this.refReplacementsOneToOne = replacements;
-					
-					self.events.addListener('onBeforeRef_', refReplacementsOneToOneCallback);
+					if (!replacements[key])
+					{
+						replacements[key] = parent[key];
+					}
 				}
 			}
-			else
-			{
-				self.events.removeListener('onBeforeRef_', refReplacementsOneToOneCallback);
+		}
 
-				this.refReplacementsOneToOne = undefined;
+		var pattern = "";
+
+		for (var key in replacements)
+		{
+			//console.log({pattern: pattern, key: key});
+			if (key != "__inline__" && key != "__pattern__")
+			{
+				pattern = pattern + (pattern ? "|" : "") + regExpEscape(key);
 			}
 		}
+
+		if (pattern)
+		{
+			replacements.__pattern__ = '(^|\\.)('+pattern+')(\\.|$)';
+		}
+	}
+
+	const events = requireEvents(this);
+
+	if (replacements.__pattern__)
+	{
+		//console.log({pattern: replacements.__pattern__, replacements: replacements});
+		rx = new RegExp(replacements.__pattern__, "g");
+
+		this.refReplacementsOneToOne = replacements;
+		
+		events.addListener('onBeforeRef_', refReplacementsOneToOneCallback);
+	}
+	else if (this.refReplacementsOneToOne)
+	{
+		events.removeListener('onBeforeRef_', refReplacementsOneToOneCallback);
+
+		this.refReplacementsOneToOne = undefined;
 	}
 }
 
@@ -452,6 +495,7 @@ JSPON.parse = function(str)
 
 JSPON.prototype.parse = function(str) {
 	var obj = this.jsonParser(str);
+	this.evaluateOneToOneReplacements(obj);
 	obj = this.jsponParse({}, obj, this.useIdBase ? obj[this.idFieldName] : this.jsonPathRoot);
 	return obj;
 }
